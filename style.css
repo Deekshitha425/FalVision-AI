@@ -49,6 +49,28 @@ html, body, [data-testid="stAppViewContainer"] {
   border-right: 1px solid rgba(255,255,255,.06);
 }
 [data-testid="stSidebar"] * { color: rgba(255,255,255,.9) !important; }
+
+/* Sidebar nav buttons — force visible text on dark bg */
+[data-testid="stSidebar"] .stButton > button {
+  background: rgba(255,255,255,.08) !important;
+  color: rgba(255,255,255,.9) !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  font-size: .9rem !important;
+  text-align: left !important;
+  padding: .5rem .8rem !important;
+  transition: background .18s !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+  background: rgba(255,255,255,.16) !important;
+  border-color: rgba(255,255,255,.3) !important;
+  color: #ffffff !important;
+}
+[data-testid="stSidebar"] .stButton > button:focus {
+  box-shadow: none !important;
+  outline: none !important;
+}
 [data-testid="stSidebar"] .sidebar-logo {
   font-family: 'DM Serif Display', serif;
   font-size: 1.6rem;
