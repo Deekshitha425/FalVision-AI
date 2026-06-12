@@ -1,160 +1,131 @@
 """
-utils/predictor.py
-Model loading, inference, and GradCAM for FalVision AI.
+predictor.py — Model loading and inference for FalVision AI.
 
-Model architecture (verified):
-  MobileNetV2 backbone → out_relu (7×7×1280) → GAP → BN → Dropout → Dense(3, softmax)
-
-Class index order (alphabetical, as assigned by ImageDataGenerator):
-  0 → bad_quality   → Bad Quality
-  1 → good_quality  → Good Quality
-  2 → mixed_quality → Mixed Quality
+Dataset classes (must match train_gen.class_indices order exactly):
+  0 → Bad Quality_Fruits
+  1 → Good Quality_Fruits
+  2 → Mixed Qualit_Fruits
 """
 
+import time
 import numpy as np
 import streamlit as st
-from PIL import Image
-import datetime
-import io
+from utils.preprocessing import preprocess_image
 
-# ── Class registry ────────────────────────────────────────────────────────────
-CLASS_NAMES    = ["bad_quality", "good_quality", "mixed_quality"]
-QUALITY_LABELS = {
-    "bad_quality":   "Bad Quality",
-    "good_quality":  "Good Quality",
-    "mixed_quality": "Mixed Quality",
+# ── Exact class names from train_gen.class_indices ───────────────
+CLASS_NAMES = [
+    "Bad Quality_Fruits",
+    "Good Quality_Fruits",
+    "Mixed Qualit_Fruits",
+]
+
+# ── How each class maps to a display label + UI type ─────────────
+CLASS_META = {
+    "Bad Quality_Fruits": {
+        "label":   "⛔ Bad Quality",
+        "type":    "error",
+        "emoji":   "🍂",
+        "summary": "This fruit has been identified as poor quality.",
+    },
+    "Good Quality_Fruits": {
+        "label":   "✅ Good Quality",
+        "type":    "success",
+        "emoji":   "🍎",
+        "summary": "This fruit meets quality standards.",
+    },
+    "Mixed Qualit_Fruits": {
+        "label":   "⚠️ Mixed Quality",
+        "type":    "warning",
+        "emoji":   "🍊",
+        "summary": "This fruit shows mixed quality indicators.",
+    },
 }
 
-GRADCAM_LAYER = "out_relu"   # last spatial activation: (7, 7, 1280)
-IMG_SIZE      = (224, 224)
+# ── Recommendations per quality type ─────────────────────────────
+RECOMMENDATIONS = {
+    "success": [
+        "✅ Ready for immediate sale or retail display.",
+        "📦 Suitable for standard shelf-life packaging.",
+        "🚚 Can be transported through normal cold chain.",
+    ],
+    "warning": [
+        "🔍 Inspect batch carefully before distribution.",
+        "⏰ Prioritise sale within 1–2 days.",
+        "🔄 Consider sorting — some units may still be sellable.",
+    ],
+    "error": [
+        "🚫 Do not distribute — remove from supply chain.",
+        "🔬 Inspect nearby batch for contamination spread.",
+        "🗑️ Compost or dispose of safely.",
+    ],
+}
 
-# Fruit list for the manual selector in the UI
-FRUIT_LIST = [
-    "Apple", "Banana", "Cherry", "Fig", "Grape", "Guava", "Kiwi",
-    "Lemon", "Mango", "Melon", "Orange", "Papaya", "Peach", "Pear",
-    "Pineapple", "Plum", "Pomegranate", "Strawberry", "Tomato", "Watermelon",
-]
+# ── Generic fruit info shown after prediction ─────────────────────
+QUALITY_TIPS = {
+    "success": {
+        "storage":  "Follow standard cold-chain: 2–8°C for most fruits.",
+        "handling": "Single-layer crating recommended to avoid bruising.",
+        "note":     "Batch cleared for distribution. Document lot number.",
+    },
+    "warning": {
+        "storage":  "Reduce storage time — move to front of stock rotation.",
+        "handling": "Separate mixed-quality units from premium stock.",
+        "note":     "Re-inspect within 24 hours before dispatch decision.",
+    },
+    "error": {
+        "storage":  "Do not refrigerate with good stock — risk of spread.",
+        "handling": "Use gloves; bag separately before disposal.",
+        "note":     "Log rejection in quality management system.",
+    },
+}
 
 
 @st.cache_resource(show_spinner=False)
-def load_model(model_path: str):
-    """Load and cache the Keras model. Runs once per session."""
+def load_model(model_path: str = "model/falvision_model.keras"):
+    """Load and cache the TensorFlow model."""
     import tensorflow as tf
     try:
         model = tf.keras.models.load_model(model_path)
+        dummy = np.zeros((1, 224, 224, 3), dtype=np.float32)
+        model.predict(dummy, verbose=0)
         return model
     except Exception as e:
         st.error(f"❌ Failed to load model: {e}")
-        st.stop()
+        return None
 
 
-def preprocess_image(image_file) -> np.ndarray:
+def predict_image(model, pil_image):
     """
-    Open an uploaded file-like object, resize to 224×224,
-    normalise to [0, 1], return shape (1, 224, 224, 3).
-    """
-    img = Image.open(image_file).convert("RGB")
-    img = img.resize(IMG_SIZE, Image.BILINEAR)
-    arr = np.array(img, dtype=np.float32) / 255.0
-    return np.expand_dims(arr, axis=0)
-
-
-def predict_image(model, uploaded_file, fruit_name: str) -> dict:
-    """
-    Run full prediction pipeline.
-
-    Args:
-        model         : loaded Keras model
-        uploaded_file : Streamlit UploadedFile
-        fruit_name    : user-selected fruit name string
+    Run inference on a PIL image.
 
     Returns dict with keys:
-        fruit_name, quality_label, confidence, probs, timestamp
+        quality_label, quality_type, quality_emoji, quality_summary,
+        confidence, all_probs, prediction_time, recommendations, tips
     """
-    import tensorflow as tf
+    arr = preprocess_image(pil_image)
 
-    uploaded_file.seek(0)
-    img_array = preprocess_image(uploaded_file)
+    t0    = time.time()
+    probs = model.predict(arr, verbose=0)[0]
+    elapsed = round((time.time() - t0) * 1000, 1)
 
-    preds     = model.predict(img_array, verbose=0)[0]   # (3,)
-    pred_idx  = int(np.argmax(preds))
-    raw_class = CLASS_NAMES[pred_idx]
-    quality_label = QUALITY_LABELS[raw_class]
-    confidence    = float(preds[pred_idx]) * 100
+    idx        = int(np.argmax(probs))
+    confidence = float(probs[idx]) * 100
+    class_name = CLASS_NAMES[idx]
 
-    probs = {
-        QUALITY_LABELS[CLASS_NAMES[i]]: float(preds[i])
-        for i in range(len(CLASS_NAMES))
-    }
+    meta = CLASS_META[class_name]
 
     return {
-        "fruit_name":    fruit_name,
-        "quality_label": quality_label,
-        "confidence":    confidence,
-        "probs":         probs,
-        "timestamp":     datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "class_name":     class_name,
+        "quality_label":  meta["label"],
+        "quality_type":   meta["type"],
+        "quality_emoji":  meta["emoji"],
+        "quality_summary":meta["summary"],
+        "confidence":     confidence,
+        "all_probs": {
+            CLASS_NAMES[i]: float(probs[i]) * 100
+            for i in range(len(probs))
+        },
+        "prediction_time": elapsed,
+        "recommendations": RECOMMENDATIONS[meta["type"]],
+        "tips":            QUALITY_TIPS[meta["type"]],
     }
-
-
-def generate_gradcam(model, uploaded_file, pred_class_idx: int) -> Image.Image:
-    """
-    Generate a GradCAM heatmap overlay for the predicted class.
-
-    Args:
-        model          : loaded Keras model
-        uploaded_file  : Streamlit UploadedFile
-        pred_class_idx : index of predicted class (0, 1, or 2)
-
-    Returns:
-        PIL Image — original image blended with green heatmap overlay
-    """
-    import tensorflow as tf
-
-    uploaded_file.seek(0)
-    orig_img = Image.open(uploaded_file).convert("RGB")
-    orig_arr = np.array(orig_img.resize(IMG_SIZE), dtype=np.float32) / 255.0
-
-    img_tensor = np.expand_dims(orig_arr, axis=0)  # (1, 224, 224, 3)
-
-    # Build GradCAM sub-model
-    grad_model = tf.keras.models.Model(
-        inputs=model.inputs,
-        outputs=[model.get_layer(GRADCAM_LAYER).output, model.output],
-    )
-
-    with tf.GradientTape() as tape:
-        conv_outputs, predictions = grad_model(img_tensor)
-        loss = predictions[:, pred_class_idx]
-
-    # Gradients of loss w.r.t. conv feature maps
-    grads       = tape.gradient(loss, conv_outputs)          # (1, 7, 7, 1280)
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))     # (1280,)
-
-    # Weight channels by importance
-    conv_outputs = conv_outputs[0]                            # (7, 7, 1280)
-    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]   # (7, 7, 1)
-    heatmap = tf.squeeze(heatmap)                            # (7, 7)
-
-    # Normalise to [0, 1]
-    heatmap = tf.nn.relu(heatmap)
-    heatmap_np = heatmap.numpy()
-    if heatmap_np.max() > 0:
-        heatmap_np = heatmap_np / heatmap_np.max()
-
-    # Resize heatmap to 224×224
-    heatmap_img = Image.fromarray(np.uint8(heatmap_np * 255)).resize(
-        IMG_SIZE, Image.BILINEAR
-    )
-    heatmap_arr = np.array(heatmap_img, dtype=np.float32) / 255.0  # (224, 224)
-
-    # Apply green-tinted colormap (green = high activation)
-    colormap = np.zeros((224, 224, 3), dtype=np.float32)
-    colormap[:, :, 0] = heatmap_arr * 0.9   # Red channel (low)
-    colormap[:, :, 1] = heatmap_arr          # Green channel (high = bright green)
-    colormap[:, :, 2] = heatmap_arr * 0.1   # Blue channel (low)
-
-    # Blend with original image
-    blended = orig_arr * 0.55 + colormap * 0.45
-    blended = np.clip(blended, 0, 1)
-
-    return Image.fromarray(np.uint8(blended * 255))
