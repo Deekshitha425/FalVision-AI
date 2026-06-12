@@ -149,6 +149,54 @@ def page_detection():
                 <span>📐 {img.width}×{img.height}px</span>
             </div>
             """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class='upload-placeholder'>
+                <div class='upload-placeholder-icon'>🍓🍌🍊</div>
+                <div class='upload-placeholder-text'>No image selected yet</div>
+                <div class='upload-placeholder-sub'>JPG, JPEG or PNG · up to 200MB</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ── How it works ────────────────────────────────────────
+        st.markdown("<div class='section-heading'>⚙️ How It Works</div>",
+                    unsafe_allow_html=True)
+
+        steps = [
+            ("📤", "Upload", "Drop in any fruit photo — JPG or PNG."),
+            ("🧠", "Analyze", "MobileNetV2 scans the image in milliseconds."),
+            ("📊", "Classify", "Get Good / Bad / Mixed with a confidence score."),
+            ("🔥", "Explain", "Grad-CAM shows exactly where the model looked."),
+        ]
+        for icon, title, desc in steps:
+            st.markdown(f"""
+            <div class='step-row'>
+                <div class='step-icon'>{icon}</div>
+                <div>
+                    <div class='step-title'>{title}</div>
+                    <div class='step-desc'>{desc}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ── Quality legend ─────────────────────────────────────
+        st.markdown("<div class='section-heading'>🎨 Quality Legend</div>",
+                    unsafe_allow_html=True)
+        legend = [
+            ("✅ Good Quality", "var(--green-600)", "Safe for sale & transport"),
+            ("⚠️ Mixed Quality", "#d97706", "Needs inspection before dispatch"),
+            ("⛔ Bad Quality", "#dc2626", "Remove from supply chain"),
+        ]
+        for label, color, desc in legend:
+            st.markdown(f"""
+            <div class='legend-row'>
+                <span class='legend-dot' style='background:{color};'></span>
+                <div>
+                    <div class='legend-label'>{label}</div>
+                    <div class='legend-desc'>{desc}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
     # ── Result column ──────────────────────────────────────────
     with col_result:
@@ -183,6 +231,9 @@ def page_detection():
             }
             border = border_colors.get(result["quality_type"], "var(--green-600)")
 
+            st.markdown(f"<div class='result-panel quality-{result['quality_type']}'>",
+                        unsafe_allow_html=True)
+
             # Header row: emoji + label + summary
             head_col1, head_col2 = st.columns([1, 5])
             with head_col1:
@@ -199,6 +250,7 @@ def page_detection():
                         unsafe_allow_html=True)
 
             st.caption(f"⚡ {result['prediction_time']} ms inference time")
+            st.markdown("</div>", unsafe_allow_html=True)
 
             # All 3 class scores
             st.markdown("<div class='section-heading'>📊 All Class Scores</div>",
