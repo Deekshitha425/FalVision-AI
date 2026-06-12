@@ -1,10 +1,6 @@
 """
 predictor.py — Model loading and inference for FalVision AI.
-
-Dataset classes (must match train_gen.class_indices order exactly):
-  0 → Bad Quality_Fruits
-  1 → Good Quality_Fruits
-  2 → Mixed Qualit_Fruits
+Compatible with TensorFlow 2.21 + Keras 3.x (standalone)
 """
 
 import time
@@ -12,14 +8,12 @@ import numpy as np
 import streamlit as st
 from utils.preprocessing import preprocess_image
 
-# ── Exact class names from train_gen.class_indices ───────────────
 CLASS_NAMES = [
     "Bad Quality_Fruits",
     "Good Quality_Fruits",
     "Mixed Qualit_Fruits",
 ]
 
-# ── How each class maps to a display label + UI type ─────────────
 CLASS_META = {
     "Bad Quality_Fruits": {
         "label":   "⛔ Bad Quality",
@@ -41,7 +35,6 @@ CLASS_META = {
     },
 }
 
-# ── Recommendations per quality type ─────────────────────────────
 RECOMMENDATIONS = {
     "success": [
         "✅ Ready for immediate sale or retail display.",
@@ -50,7 +43,7 @@ RECOMMENDATIONS = {
     ],
     "warning": [
         "🔍 Inspect batch carefully before distribution.",
-        "⏰ Prioritise sale within 1–2 days.",
+        "⏰ Prioritise sale within 1-2 days.",
         "🔄 Consider sorting — some units may still be sellable.",
     ],
     "error": [
@@ -60,10 +53,9 @@ RECOMMENDATIONS = {
     ],
 }
 
-# ── Generic fruit info shown after prediction ─────────────────────
 QUALITY_TIPS = {
     "success": {
-        "storage":  "Follow standard cold-chain: 2–8°C for most fruits.",
+        "storage":  "Follow standard cold-chain: 2-8 degrees C for most fruits.",
         "handling": "Single-layer crating recommended to avoid bruising.",
         "note":     "Batch cleared for distribution. Document lot number.",
     },
@@ -82,10 +74,10 @@ QUALITY_TIPS = {
 
 @st.cache_resource(show_spinner=False)
 def load_model(model_path: str = "model/falvision_model.keras"):
-    """Load and cache the TensorFlow model."""
-    import tensorflow as tf
+    """Load model using standalone keras (required for TF 2.16+ / Keras 3.x)."""
     try:
-        model = tf.keras.models.load_model(model_path)
+        import keras
+        model = keras.models.load_model(model_path)
         dummy = np.zeros((1, 224, 224, 3), dtype=np.float32)
         model.predict(dummy, verbose=0)
         return model
@@ -95,35 +87,26 @@ def load_model(model_path: str = "model/falvision_model.keras"):
 
 
 def predict_image(model, pil_image):
-    """
-    Run inference on a PIL image.
-
-    Returns dict with keys:
-        quality_label, quality_type, quality_emoji, quality_summary,
-        confidence, all_probs, prediction_time, recommendations, tips
-    """
-    arr = preprocess_image(pil_image)
-
-    t0    = time.time()
-    probs = model.predict(arr, verbose=0)[0]
+    arr     = preprocess_image(pil_image)
+    t0      = time.time()
+    probs   = model.predict(arr, verbose=0)[0]
     elapsed = round((time.time() - t0) * 1000, 1)
 
     idx        = int(np.argmax(probs))
     confidence = float(probs[idx]) * 100
-    class_name = CLASS_NAMES[idx]
-
-    meta = CLASS_META[class_name]
+    class_name = CLASS_NAMES[idx] if idx < len(CLASS_NAMES) else CLASS_NAMES[0]
+    meta       = CLASS_META[class_name]
 
     return {
-        "class_name":     class_name,
-        "quality_label":  meta["label"],
-        "quality_type":   meta["type"],
-        "quality_emoji":  meta["emoji"],
-        "quality_summary":meta["summary"],
-        "confidence":     confidence,
+        "class_name":      class_name,
+        "quality_label":   meta["label"],
+        "quality_type":    meta["type"],
+        "quality_emoji":   meta["emoji"],
+        "quality_summary": meta["summary"],
+        "confidence":      confidence,
         "all_probs": {
             CLASS_NAMES[i]: float(probs[i]) * 100
-            for i in range(len(probs))
+            for i in range(min(len(probs), len(CLASS_NAMES)))
         },
         "prediction_time": elapsed,
         "recommendations": RECOMMENDATIONS[meta["type"]],
