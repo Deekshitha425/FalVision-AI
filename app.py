@@ -183,33 +183,22 @@ def page_detection():
             }
             border = border_colors.get(result["quality_type"], "var(--green-600)")
 
-            st.markdown(f"""
-            <div class='result-wrap' style='border-left-color:{border};'>
-                <div style='display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;'>
-                    <span style='font-size:3rem;'>{result['quality_emoji']}</span>
-                    <div>
-                        <div class='result-fruit'>{result['quality_label']}</div>
-                        <div style='font-size:.88rem;color:var(--gray-500);margin-top:.2rem;'>
-                            {result['quality_summary']}
-                        </div>
-                    </div>
-                </div>
+            # Header row: emoji + label + summary
+            head_col1, head_col2 = st.columns([1, 5])
+            with head_col1:
+                st.markdown(f"<div style='font-size:3rem;text-align:center;'>{result['quality_emoji']}</div>",
+                            unsafe_allow_html=True)
+            with head_col2:
+                st.markdown(f"### {result['quality_label']}")
+                st.caption(result['quality_summary'])
 
-                <div class='conf-bar-wrap'>
-                    <div class='conf-bar-label'>
-                        <span>Confidence</span>
-                        <span>{result['confidence']:.1f}%</span>
-                    </div>
-                    <div class='conf-bar-track'>
-                        <div class='conf-bar-fill' style='width:{result['confidence']:.1f}%; background:linear-gradient(90deg,{border},{border});'></div>
-                    </div>
-                </div>
+            # Confidence bar — native Streamlit
+            st.markdown("**Confidence**")
+            st.progress(min(result['confidence'] / 100, 1.0))
+            st.markdown(f"<p style='text-align:right;margin-top:-12px;font-weight:600;'>{result['confidence']:.1f}%</p>",
+                        unsafe_allow_html=True)
 
-                <div style='font-size:.8rem;color:var(--gray-500);margin-top:.6rem;'>
-                    ⚡ {result['prediction_time']} ms inference time
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.caption(f"⚡ {result['prediction_time']} ms inference time")
 
             # All 3 class scores
             st.markdown("<div class='section-heading'>📊 All Class Scores</div>",
@@ -223,24 +212,11 @@ def page_detection():
             sorted_probs = sorted(result["all_probs"].items(),
                                   key=lambda x: x[1], reverse=True)
             for cls, prob in sorted_probs:
-                name, color = display_names.get(cls, (cls, "var(--gray-500)"))
+                name, color = display_names.get(cls, (cls, "gray"))
                 is_top = cls == result["class_name"]
-                st.markdown(f"""
-                <div style='margin-bottom:.65rem;'>
-                    <div style='display:flex;justify-content:space-between;font-size:.85rem;
-                                font-weight:{"700" if is_top else "400"};
-                                color:{"var(--green-900)" if is_top else "var(--gray-500)"};
-                                margin-bottom:.25rem;'>
-                        <span>{name}</span><span>{prob:.1f}%</span>
-                    </div>
-                    <div style='height:8px;background:var(--gray-100);
-                                border-radius:99px;overflow:hidden;'>
-                        <div style='width:{max(prob,0.5):.1f}%;height:100%;
-                                    background:{color};border-radius:99px;
-                                    transition:width .5s ease;'></div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                label = f"**{name}**" if is_top else name
+                st.markdown(f"{label}  —  {prob:.1f}%")
+                st.progress(min(max(prob, 0.5) / 100, 1.0))
 
             # ── Grad-CAM ────────────────────────────────────────
             st.markdown("<div class='section-heading'>🔥 Grad-CAM — Where the Model Looked</div>",
