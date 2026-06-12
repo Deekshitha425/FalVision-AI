@@ -413,3 +413,114 @@ html, body, [data-testid="stAppViewContainer"] {
   .hero-stats { gap: 1.2rem; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Upload placeholder ─────────────────────────────────────── */
+.upload-placeholder {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--green-50) 0%, var(--white) 100%);
+  border: 1px dashed var(--green-200, #bbf7d0);
+  margin-top: 1rem;
+}
+.upload-placeholder-icon {
+  font-size: 2.4rem;
+  margin-bottom: .6rem;
+  filter: grayscale(0.15);
+}
+.upload-placeholder-text {
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--green-800);
+  margin-bottom: .2rem;
+}
+.upload-placeholder-sub {
+  font-size: .78rem;
+  color: var(--gray-500);
+}
+
+/* ── How it works steps ────────────────────────────────────── */
+.step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .9rem;
+  padding: .7rem 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.step-row:last-child { border-bottom: none; }
+.step-icon {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  background: var(--green-100);
+  border-radius: 10px;
+}
+.step-title {
+  font-weight: 700;
+  font-size: .9rem;
+  color: var(--green-900);
+  margin-bottom: .1rem;
+}
+.step-desc {
+  font-size: .8rem;
+  color: var(--gray-500);
+  line-height: 1.5;
+}
+
+/* ── Quality legend ─────────────────────────────────────────── */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.legend-row:last-child { border-bottom: none; }
+.legend-dot {
+  flex-shrink: 0;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(0,0,0,.04);
+}
+.legend-label {
+  font-weight: 600;
+  font-size: .85rem;
+  color: var(--gray-700);
+}
+.legend-desc {
+  font-size: .76rem;
+  color: var(--gray-500);
+}
+
+/* ── Result panel polish ──────────────────────────────────────*/
+.result-panel {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.6rem;
+  box-shadow: var(--shadow-md);
+  border-top: 4px solid var(--green-600);
+  margin-bottom: 1.2rem;
+}
+.result-panel.quality-error  { border-top-color: #dc2626; }
+.result-panel.quality-warning{ border-top-color: #d97706; }
+.result-panel.quality-success{ border-top-color: var(--green-600); }
+
+/* Make st.progress bars chunkier and on-brand */
+[data-testid="stProgress"] > div > div {
+  border-radius: 99px !important;
+  height: 10px !important;
+}
+[data-testid="stProgress"] > div {
+  border-radius: 99px !important;
+  background: var(--gray-100) !important;
+}
+
+/* Smooth fade-in for result section */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.result-panel, .glass-card {
+  animation: fadeInUp .35s ease-out;
+}
