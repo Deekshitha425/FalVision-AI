@@ -8,6 +8,7 @@ import os
 import sys
 
 import streamlit as st
+import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -200,7 +201,7 @@ def page_detection():
                         <span>{result['confidence']:.1f}%</span>
                     </div>
                     <div class='conf-bar-track'>
-                        <div class='conf-bar-fill' style='width:{result["confidence"]:.1f}%; background:linear-gradient(90deg,{border},{border});'></div>
+                        <div class='conf-bar-fill' style='width:{result['confidence']:.1f}%; background:linear-gradient(90deg,{border},{border});'></div>
                     </div>
                 </div>
 
@@ -253,10 +254,16 @@ def page_detection():
                 heatmap = make_gradcam_heatmap(img_array, model, pred_idx)
                 overlay = overlay_gradcam(img_array[0], heatmap)
 
+                # Colorize heatmap for display (JET colormap)
+                import cv2
+                heatmap_uint8   = np.uint8(255 * heatmap)
+                heatmap_colored = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
+                heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
+
                 gc_col1, gc_col2 = st.columns(2)
                 with gc_col1:
-                    st.image(heatmap, caption="Activation Heatmap",
-                             use_container_width=True, clamp=True)
+                    st.image(heatmap_colored, caption="Activation Heatmap",
+                             use_container_width=True)
                 with gc_col2:
                     st.image(overlay, caption="Overlay on Original",
                              use_container_width=True)
