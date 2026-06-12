@@ -202,7 +202,6 @@ def page_detection():
                     <div class='conf-bar-track'>
                         <div class='conf-bar-fill' style='width:{result["confidence"]:.1f}%; background:linear-gradient(90deg,{border},{border});'></div>
                     </div>
-                    </div>
                 </div>
 
                 <div style='font-size:.8rem;color:var(--gray-500);margin-top:.6rem;'>
