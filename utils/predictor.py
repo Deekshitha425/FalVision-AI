@@ -112,3 +112,43 @@ def predict_image(model, pil_image):
         "recommendations": RECOMMENDATIONS[meta["type"]],
         "tips":            QUALITY_TIPS[meta["type"]],
     }
+
+
+# ── Grad-CAM ──────────────────────────────────────────────────────
+LAST_CONV_LAYER = "out_relu"   # MobileNetV2's last conv layer name
+
+
+def make_gradcam_heatmap(img_array, model, pred_index, last_conv_layer_name=LAST_CONV_LAYER):
+    """Generate a Grad-CAM heatmap (values 0-1) for the given prediction class."""
+    import tensorflow as tf
+
+    grad_model = tf.keras.models.Model(
+        inputs=model.inputs,
+        outputs=[model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(img_array, training=False)
+        class_channel = predictions[:, pred_index]
+
+    grads = tape.gradient(class_channel, conv_outputs)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+    conv_outputs = conv_outputs[0]
+    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
+    heatmap = tf.squeeze(heatmap)
+    heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-8)
+    return heatmap.numpy()
+
+
+def overlay_gradcam(original_img, heatmap, alpha=0.4):
+    """Overlay a Grad-CAM heatmap on the original image (both as np arrays, 0-1 range)."""
+    import cv2
+    h, w = original_img.shape[:2]
+    heatmap_resized = cv2.resize(heatmap, (w, h))
+    heatmap_uint8   = np.uint8(255 * heatmap_resized)
+    colormap        = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
+    colormap_rgb    = cv2.cvtColor(colormap, cv2.COLOR_BGR2RGB)
+    img_uint8       = np.uint8(255 * original_img)
+    superimposed    = cv2.addWeighted(img_uint8, 1 - alpha, colormap_rgb, alpha, 0)
+    return superimposed
