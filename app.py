@@ -12,7 +12,10 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from utils.predictor import load_model, predict_image, CLASS_NAMES
+from utils.predictor import (
+    load_model, predict_image, CLASS_NAMES,
+    make_gradcam_heatmap, overlay_gradcam,
+)
 from utils.analytics import init_history, log_prediction, get_analytics_summary
 
 # ═══════════════════════════════════════════════════════════════
@@ -240,6 +243,31 @@ def page_detection():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # ── Grad-CAM ────────────────────────────────────────
+            st.markdown("<div class='section-heading'>🔥 Grad-CAM — Where the Model Looked</div>",
+                        unsafe_allow_html=True)
+            try:
+                from utils.preprocessing import preprocess_image
+
+                img_array = preprocess_image(img)
+                pred_idx  = CLASS_NAMES.index(result["class_name"])
+
+                heatmap = make_gradcam_heatmap(img_array, model, pred_idx)
+                overlay = overlay_gradcam(img_array[0], heatmap)
+
+                gc_col1, gc_col2 = st.columns(2)
+                with gc_col1:
+                    st.image(heatmap, caption="Activation Heatmap",
+                             use_container_width=True, clamp=True)
+                with gc_col2:
+                    st.image(overlay, caption="Overlay on Original",
+                             use_container_width=True)
+
+                st.caption("🔴 Red/yellow regions show where the model focused most "
+                           "when making this prediction.")
+            except Exception as e:
+                st.info(f"Grad-CAM unavailable: {e}")
 
     # ── Recommendations + Tips (shown below once result exists) ──
     if uploaded and "result" in dir() and result:
