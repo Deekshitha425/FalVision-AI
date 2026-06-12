@@ -40,12 +40,9 @@ FRUIT_LIST = [
 def load_model(model_path: str):
     """Load and cache the Keras model. Runs once per session."""
     import tensorflow as tf
-    import os
     try:
-        # Build absolute path relative to this file's location
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        abs_path = os.path.join(base_dir, model_path)
-        model = tf.keras.models.load_model(abs_path)
+        model = tf.keras.models.load_model(model_path)
+        return model
     except Exception as e:
         st.error(f"❌ Failed to load model: {e}")
         st.stop()
