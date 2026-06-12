@@ -81,50 +81,7 @@ Open **http://localhost:8501** in your browser.
 
 ---
 
-## ☁️ Deployment
 
-### Streamlit Community Cloud (free)
-
-1. Push the project to a **public GitHub repo**
-2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**
-3. Select repo, branch, set **Main file path** → `app.py`
-4. Click **Deploy**
-
-> ⚠️ The `.keras` model file is ~14 MB — within GitHub's 100 MB limit. Use **Git LFS** if the file grows larger.
-
-### Hugging Face Spaces (free)
-
-1. Create a new Space → SDK: **Streamlit**
-2. Upload all project files
-3. The Space auto-installs `requirements.txt` and launches
-
-### Docker
-
-```dockerfile
-FROM python:3.10-slim
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-EXPOSE 8501
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-```
-
-```bash
-docker build -t falvision-ai .
-docker run -p 8501:8501 falvision-ai
-```
-
----
-
-## 🔧 Tip: Improve Fruit Name Detection
-
-The app infers fruit names from the **image filename** (e.g. `mango_ripe.jpg` → "Mango"). For better results, rename your images before uploading, or extend `FRUIT_KEYWORDS` in `utils/predictor.py`.
-
----
-
-## 📄 License
-
-MIT — free to use, modify, and distribute.
 
 ---
 
