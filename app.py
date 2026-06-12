@@ -200,10 +200,8 @@ def page_detection():
                         <span>{result['confidence']:.1f}%</span>
                     </div>
                     <div class='conf-bar-track'>
-                        <div class='conf-bar-fill'
-                             style='width:{result["confidence"]:.1f}%;
-                                    background:linear-gradient(90deg,{border},{border});'>
-                        </div>
+                        <div class='conf-bar-fill' style='width:{result["confidence"]:.1f}%; background:linear-gradient(90deg,{border},{border});'></div>
+                    </div>
                     </div>
                 </div>
 
